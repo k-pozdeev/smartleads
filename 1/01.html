@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Сортировка таблицы</title>
+    <style>
+        th, td {
+            padding: 0.25rem 0.75rem;
+        }
+        td {
+            text-align: right;
+        }
+        .name {
+            text-align: left;
+        }
+        th[data-sort="asc"]::after {
+            content: " ▲";
+        }
+        th[data-sort="desc"]::after {
+            content: " ▼";
+        }
+    </style>
+</head>
+<body>
+<table>
+    <thead>
+    <tr>
+        <th data-type="integer">№</th>
+        <th data-type="date">Дата</th>
+        <th data-type="text">Имя</th>
+        <th data-type="decimal">Сумма</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>12</td>
+        <td>02.07.2016</td>
+        <td class="name">Иванов Александр</td>
+        <td>600.12</td>
+    </tr>
+    <tr>
+        <td>7</td>
+        <td>13.09.2017</td>
+        <td class="name">Семенов Николай</td>
+        <td>7200.60</td>
+    </tr>
+    <tr>
+        <td>5</td>
+        <td>20.05.2015</td>
+        <td class="name">Антонов Алексей</td>
+        <td>1248.16</td>
+    </tr>
+    <tr>
+        <td>18</td>
+        <td>24.12.2016</td>
+        <td class="name">Алексеев Игорь</td>
+        <td>20.65</td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td>17.08.2015</td>
+        <td class="name">Потапов Серей</td>
+        <td>12720.00</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td>20.01.2015</td>
+        <td class="name">Николаев Иван</td>
+        <td>121.16</td>
+    </tr>
+    <tr>
+        <td>21</td>
+        <td>25.02.2017</td>
+        <td class="name">Петров Алексей</td>
+        <td>200.50</td>
+    </tr>
+    <tr>
+        <td>16</td>
+        <td>17.09.2016</td>
+        <td class="name">Морозов Сергей</td>
+        <td>100.15</td>
+    </tr>
+    <tr>
+        <td>9</td>
+        <td>25.03.2015</td>
+        <td class="name">Иванов Константин</td>
+        <td>600.25</td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td>29.04.2017</td>
+        <td class="name">Потапов Андрей</td>
+        <td>3200.00</td>
+    </tr>
+    </tbody>
+</table>
+<script type="text/javascript">
+'use strict';
+
+class TableModel {
+	constructor(data) {
+		this.data = data;
+	}
+
+    sort(i, order) {
+	    // I used common compare function because each data type that we use is comparable by such a function.
+	    function compareFunc(rowA, rowB) {
+	        let comparisonResult = (rowA[i] > rowB[i])
+                ? 1
+                : ((rowA[i] < rowB[i]) ? -1 : 0);
+	        if (order === 'desc') comparisonResult = -comparisonResult;
+	        return comparisonResult;
+        }
+	    this.data.sort(compareFunc);
+	    return this;
+    }
+
+    getData() {
+	    return this.data;
+    }
+}
+
+class Controller {
+    constructor(table, view, model) {
+        this.table = table;
+        this.view = view;
+        this.model = model;
+
+        let headerNodes = table.querySelectorAll('th');
+        for (let [i, headerNode] of headerNodes.entries()) {
+            headerNode.onclick = this.getOnClickHandler(headerNode, i);
+        }
+    }
+
+    getOnClickHandler(headerNode, i) {
+        return () => {
+            let sortOrder = headerNode.getAttribute('data-sort');
+            sortOrder = (sortOrder === null || typeof sortOrder === 'undefined')
+                ? 'asc'
+                : (sortOrder === 'asc' ? 'desc' : 'asc');
+            headerNode.setAttribute('data-sort', sortOrder);
+            this.view.render(this.model.sort(i, sortOrder).getData(), i, sortOrder);
+        }
+    }
+}
+
+class TableView {
+    constructor(domNode) {
+        this.tableDomElement = domNode;
+        this.headerDomNodes = this.tableDomElement.querySelectorAll('th');
+        this.types = Array.from(this.headerDomNodes).map((v) => v.getAttribute('data-type'));
+        this.formatters = {};
+    }
+
+    setFormatter(type, formatter) {
+        this.formatters[type] = formatter;
+    }
+
+    format(row, i) {
+        let type = this.types[i];
+        return (typeof this.formatters[type] !== 'undefined')
+            ? this.formatters[type](row[i])
+            : row[i];
+    }
+
+    render(data, i, sortOrder) {
+        this.headerDomNodes.forEach((value) => value.setAttribute("data-sort", null));
+        this.headerDomNodes.item(i).setAttribute("data-sort", sortOrder);
+
+        let body = this.tableDomElement.querySelector("tbody");
+        let tableBodyHtml = '';
+        for (let row of data) {
+            tableBodyHtml += "    <tr>\n" +
+                "        <td>" + this.format(row, 0) + "</td>\n" +
+                "        <td>" + this.format(row, 1) + "</td>\n" +
+                "        <td class=\"name\">" + this.format(row, 2) + "</td>\n" +
+                "        <td>" + this.format(row, 3) + "</td>\n" +
+                "    </tr>";
+        }
+        body.innerHTML = tableBodyHtml;
+    }
+}
+
+let data = [
+    [12, new Date('2016-07-02'), 'Иванов Александр', 600.12],
+    [7, new Date('2017-09-13'), 'Семенов Николай', 7200.60],
+    [5, new Date('2015-05-20'), 'Антонов Алексей', 1248.16],
+    [18, new Date('2016-12-24'), 'Алексеев Игорь', 20.65],
+    [3, new Date('2015-08-17'), 'Потапов Серей', 12720.00],
+    [1, new Date('2015-01-20'), 'Николаев Иван', 121.16],
+    [21, new Date('2017-02-25'), 'Петров Алексей', 200.50],
+    [16, new Date('2016-09-17'), 'Морозов Сергей', 100.15],
+    [9, new Date('2015-03-25'), 'Иванов Константин', 600.25],
+    [2, new Date('2017-04-29'), 'Потапов Андрей', 3200.00],
+];
+let model = new TableModel(data);
+
+let view = new TableView(document.querySelector("table"));
+
+function formatDate(date) {
+    let dd = date.getDate();
+    if (dd < 10) dd = '0' + dd;
+    let mm = date.getMonth() + 1;
+    if (mm < 10) mm = '0' + mm;
+    let yy = date.getFullYear() % 100;
+    if (yy < 10) yy = '0' + yy;
+    return dd + '.' + mm + '.' + yy;
+}
+view.setFormatter('date', function (val) { return formatDate(val); });
+view.setFormatter('decimal', function (val) { return val.toFixed(2).toString(); });
+
+let controller = new Controller(document.querySelector("table"), view, model);
+
+</script>
+</body>
+</html>
